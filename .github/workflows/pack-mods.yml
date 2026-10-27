@@ -1,0 +1,47 @@
+name: Pack and Release Mods
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "mods/**"
+  workflow_dispatch: # Umożliwia ręczne uruchomienie w zakładce Actions na GitHubie
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install 7-Zip
+        run: sudo apt-get update && sudo apt-get install -y p7zip-full
+
+      - name: Create Ultra-Compressed Mods Archive
+        run: |
+          mkdir -p build
+          # Pakowanie wszystkich modów z maksymalną kompresją zip (Deflate/LZMA)
+          cd mods
+          7z a -tzip -mx=9 ../build/mods.zip ./*
+          cd ..
+          echo "Rozmiar utworzonego archiwum:"
+          ls -lh build/mods.zip
+
+      - name: Update Latest Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Najnowsza Paczka Modów (Auto-Build)"
+          body: |
+            Automatycznie wygenerowana paczka modów po zmianach w repozytorium.
+            Data aktualizacji: ${{ github.event.head_commit.timestamp || 'teraz' }}
+            Ostatni commit: ${{ github.sha }}
+          draft: false
+          prerelease: false
+          files: |
+            build/mods.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
